@@ -26,6 +26,7 @@ namespace App\Service;
 use DateTimeInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
@@ -43,11 +44,12 @@ final class Gitoku implements PageInfoProviderInterface
     private CacheInterface $cache;
     private LoggerInterface $logger;
     private int $apiVersion = 1;
+    private LoggerInterface $logger;
 
     public function __construct(
         HttpClientInterface $client,
         CacheInterface $cache,
-        LoggerInterface $logger,
+        LoggerInterface $logger
     ) {
         $this->client = $client;
         $this->cache = $cache;
@@ -60,11 +62,56 @@ final class Gitoku implements PageInfoProviderInterface
         return $this;
     }
 
+    protected function formatMessage($message)
+    {
+
+        $this->logger->info("000000000000000000000000000000000000000000000000000000000000");
+        if (is_array($message)) {
+            $this->logger->info("1111111111111111111111111111111111111111111");
+            return var_export($message, true);
+        } elseif ($message instanceof Jsonable) {
+            $this->logger->info("22222222222222222222222222222222222222222");
+            return $message->toJson();
+        } elseif ($message instanceof Arrayable) {
+            $this->logger->info("333333333333333333333333333333333333333333333333");
+            return var_export($message->toArray(), true);
+        }
+
+        return $message;
+    }
     public function getTaxonomy(): array
     {
+        $this->logger->info("==================================================================");
+        $this->logger->info("==================================================================");
+        $this->logger->info("==================================================================");
+        $this->logger->info("==================================================================");
+        $this->logger->info("==================================================================");
+        $this->logger->info("==================================================================");
+        $this->logger->info("==================================================================");
+        $this->logger->info("==================================================================");
+
         return $this->cache->get('gitoku_taxonomy_' . $this->apiVersion, function (ItemInterface $item) {
+            $strToFind = "\"980x120\":\"Panorama\"";
             $item->expiresAfter(60);
-            return $this->request('/taxonomy');
+            $taxonomy = $this->request('/taxonomy');
+
+            $jsonResult = json_encode($taxonomy);
+            $pos = strpos($jsonResult, $strToFind, 0);
+
+            $this->logger->info("####################################################");
+            $this->logger->info("pos:");
+            $this->logger->info($pos);
+
+            $part1 = substr($jsonResult, 0, $pos + strlen($strToFind));
+            $part2 = substr($jsonResult, $pos + strlen($strToFind) +1);
+            $resultStr = $part1 . ', "1920x1080": "TEST", ' . $part2;
+
+            $this->logger->info("####################################################");
+            $this->logger->info('$resultStr');
+            $this->logger->info($resultStr);
+
+
+            return json_decode($resultStr, true);
         });
     }
 
@@ -113,3 +160,4 @@ final class Gitoku implements PageInfoProviderInterface
         return $response->toArray();
     }
 }
+
