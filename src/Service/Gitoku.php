@@ -92,16 +92,18 @@ final class Gitoku implements PageInfoProviderInterface
 
         return $this->cache->get('gitoku_taxonomy_' . $this->apiVersion, function (ItemInterface $item) {
             $strToFind = "\"980x120\":\"Panorama\"";
+            $strToFind2 = "\"mimes\":[\"text\/html\"],\"scopes\":{\"300x250\":\"Medium Rectangle\"";
             $item->expiresAfter(60);
             $taxonomy = $this->request('/taxonomy');
 
             $jsonResult = json_encode($taxonomy);
+
             $pos = strpos($jsonResult, $strToFind, 0);
+            $part1 = substr($jsonResult, 0, $pos + strlen($strToFind));
+            $part2 = substr($jsonResult, $pos + strlen($strToFind) +1);
+            $resultStr = $part1 . ', "1920x1080": "TEST", ' . $part2;
 
-            $this->logger->info("####################################################");
-            $this->logger->info("pos:");
-            $this->logger->info($pos);
-
+            $pos = strpos($jsonResult, $strToFind2, 0);
             $part1 = substr($jsonResult, 0, $pos + strlen($strToFind));
             $part2 = substr($jsonResult, $pos + strlen($strToFind) +1);
             $resultStr = $part1 . ', "1920x1080": "TEST", ' . $part2;
