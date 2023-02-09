@@ -83,28 +83,24 @@ final class Gitoku implements PageInfoProviderInterface
         $this->logger->info("==================================================================");
 
         return $this->cache->get('gitoku_taxonomy_' . $this->apiVersion, function (ItemInterface $item) {
-            $strToFind = "\"980x120\":\"Panorama\"";
-            $strToFind2 = "\"mimes\":[\"text\/html\"],\"scopes\":{\"300x250\":\"Medium Rectangle\"";
+            $strToFind = '"980x120":"Panorama"';
+            $strToFindLen = strlen($strToFind);
             $item->expiresAfter(60);
             $taxonomy = $this->request('/taxonomy');
 
             $jsonResult = json_encode($taxonomy);
-
             $pos = strpos($jsonResult, $strToFind, 0);
+
             $part1 = substr($jsonResult, 0, $pos + strlen($strToFind));
             $part2 = substr($jsonResult, $pos + strlen($strToFind) +1);
-            $resultStr = $part1 . ', "1920x1080": "TEST", ' . $part2;
-
-            $pos = strpos($jsonResult, $strToFind2, 0);
-            $part1 = substr($jsonResult, 0, $pos + strlen($strToFind));
-            $part2 = substr($jsonResult, $pos + strlen($strToFind) +1);
-            $resultStr = $part1 . ', "1920x1080": "TEST", ' . $part2;
-
-            $this->logger->info("####################################################");
-            $this->logger->info('$resultStr');
-            $this->logger->info($resultStr);
 
 
+            $pos2 = strpos($part2, $strToFind);
+            $part21 = substr($part2, 0, $pos2 + strlen($strToFind));
+            $part22 = substr($part2, $pos2 + strlen($strToFind) +1);
+
+
+            $resultStr = $part1 . ', "1920x1080": "TEST", ' . $part21 . ', "1920x1080": "TEST", ' . $part22;
             return json_decode($resultStr, true);
         });
     }
