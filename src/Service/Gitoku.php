@@ -88,7 +88,7 @@ final class Gitoku implements PageInfoProviderInterface
             $item->expiresAfter(60);
             $taxonomy = $this->request('/taxonomy');
 
-            $media0 = json_encode($taxonomy['media'][0]);
+            $media0 = json_encode($taxonomy->media[0]);
             $this->logger->info("taxonomy.media[0]: " . $media0);
 
             $jsonResult = json_encode($taxonomy);
