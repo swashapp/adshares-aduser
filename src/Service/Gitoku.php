@@ -54,57 +54,24 @@ final class Gitoku implements PageInfoProviderInterface
         return $this;
     }
 
-    protected function formatMessage($message)
-    {
-
-        $this->logger->info("000000000000000000000000000000000000000000000000000000000000");
-        if (is_array($message)) {
-            $this->logger->info("1111111111111111111111111111111111111111111");
-            return var_export($message, true);
-        } elseif ($message instanceof Jsonable) {
-            $this->logger->info("22222222222222222222222222222222222222222");
-            return $message->toJson();
-        } elseif ($message instanceof Arrayable) {
-            $this->logger->info("333333333333333333333333333333333333333333333333");
-            return var_export($message->toArray(), true);
-        }
-
-        return $message;
-    }
     public function getTaxonomy(): array
     {
-        $this->logger->info("==================================================================");
-        $this->logger->info("==================================================================");
-        $this->logger->info("==================================================================");
-        $this->logger->info("==================================================================");
-        $this->logger->info("==================================================================");
-        $this->logger->info("==================================================================");
-        $this->logger->info("==================================================================");
-        $this->logger->info("==================================================================");
-
         return $this->cache->get('gitoku_taxonomy_' . $this->apiVersion, function (ItemInterface $item) {
-            $strToFind = '"980x120":"Panorama"';
-            $strToFindLen = strlen($strToFind);
+
             $item->expiresAfter(60);
-            $taxonomy = $this->request('/taxonomy');
+            $jsonOb = $this->request('/taxonomy');
 
-//             $media0 = json_encode($taxonomy->media[0]);
-//             $this->logger->info("taxonomy.media[0]: " . $media0);
-
-            $jsonResult = json_encode($taxonomy);
-            $pos = strpos($jsonResult, $strToFind, 0);
-
-            $part1 = substr($jsonResult, 0, $pos + strlen($strToFind));
-            $part2 = substr($jsonResult, $pos + strlen($strToFind) +1);
-
-
-            $pos2 = strpos($part2, $strToFind);
-            $part21 = substr($part2, 0, $pos2 + strlen($strToFind));
-            $part22 = substr($part2, $pos2 + strlen($strToFind) +1);
-
-
-            $resultStr = $part1 . ', "1920x1080": "TEST", ' . $part21 . ', "1920x1080": "TEST", ' . $part22;
-            return json_decode($resultStr, true);
+            for($idx = 0; $idx < sizeof($jsonOb["media"]);++$idx){
+                if($jsonOb["media"][$idx]['name'] == "web"){
+                    $webObj = $jsonOb["media"][$idx];
+                    for($idx2 = 0; $idx2 < sizeof($webObj["formats"]);++$idx2){
+                        if($webObj["formats"][$idx2]["type"] == "image" || $webObj["formats"][$idx2]["type"] == "html"){
+                            $jsonOb["media"][$idx]["formats"][$idx2]["scopes"]["1920x1080"] = "Full screen " . $webObj["formats"][$idx2]["type"];
+                        }
+                    }
+                }
+            }
+            return $jsonOb;
         });
     }
 
