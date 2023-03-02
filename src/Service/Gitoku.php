@@ -77,24 +77,20 @@ final class Gitoku implements PageInfoProviderInterface
 
     public function getInfo(string $url, array $categories = []): array
     {
-        return $this->request('/page-rank/' . urlencode($url) . '?' . http_build_query(['categories' => $categories]));
+        //todo until adShares team correct new pages issue
+        return ['rank'=>1,'info'=>'ok','categories'=>['unknown'],'quality'=>'high','updated_at'=>'2023-01-01 12:00:00'];
     }
 
     public function getBatchInfo(int $limit = 1000, int $offset = 0, DateTimeInterface $changedAfter = null): array
     {
-        $params = [
-            'limit' => $limit,
-            'offset' => $offset
-        ];
-        if (null !== $changedAfter) {
-            $params['changedAfter'] = $changedAfter->format(DateTimeInterface::W3C);
-        }
-        return $this->request('/page-rank?' . http_build_query($params));
+        //todo until adShares team correct new pages issue
+        return [];
     }
 
     public function reassessment(array $data): array
     {
-        return $this->request('/reassessment', 'POST', $data);
+        //todo until adShares team correct new pages issue
+        return [];
     }
 
     private function request(string $path, string $method = 'GET', ?array $data = null): array
