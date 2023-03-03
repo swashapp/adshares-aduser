@@ -67,6 +67,7 @@ final class Gitoku implements PageInfoProviderInterface
                     for($idx2 = 0; $idx2 < sizeof($webObj["formats"]);++$idx2){
                         if($webObj["formats"][$idx2]["type"] == "image" || $webObj["formats"][$idx2]["type"] == "html"){
                             $jsonOb["media"][$idx]["formats"][$idx2]["scopes"]["1920x1080"] = "Full screen " . $webObj["formats"][$idx2]["type"];
+                            $jsonOb["media"][$idx]["formats"][$idx2]["scopes"]["3840x2160"] = "Full screen " . $webObj["formats"][$idx2]["type"];
                         }
                     }
                 }
