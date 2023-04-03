@@ -92,7 +92,7 @@ final class Gitoku implements PageInfoProviderInterface
     public function getBatchInfo(int $limit = 1000, int $offset = 0, DateTimeInterface $changedAfter = null): array
     {
         //todo until adShares team correct new pages issue
-        return [];
+        return ['page_ranks' => []];
     }
 
     public function reassessment(array $data): array
