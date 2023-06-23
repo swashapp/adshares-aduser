@@ -6,6 +6,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.10] - 2023-06-01
+### Fixed
+- Decentraland API hosts
+
+## [3.3.9] - 2023-05-30
+### Fixed
+- URL validator regular expression for urlencoded characters
+- Gitoku error handling while fetching page rank
+
+## [3.3.8] - 2023-05-15
+### Changed
+- Verify Decentraland user signatures
+
+## [3.3.7] - 2023-05-08
+### Fixed
+- Update external_user_id
+
+## [3.3.6] - 2023-03-19
+### Changed
+- Update robots.txt
+### Fixed
+- Checking fingerprint
+
+## [3.3.5] - 2023-03-08
+### Added
+- External user id
+
+## [3.3.3] - 2023-02-27
+### Changed
+- Add `noindex` header
+
 ## [3.3.2] - 2023-01-18
 ### Fixed
 - Cast page data
@@ -94,7 +125,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2019-04-01
 
 
-[Unreleased]: https://github.com/adshares/aduser/compare/v3.3.2..HEAD
+[Unreleased]: https://github.com/adshares/aduser/compare/v3.3.10..HEAD
+[3.3.10]: https://github.com/adshares/aduser/compare/v3.3.9...v3.3.10
+[3.3.9]: https://github.com/adshares/aduser/compare/v3.3.8...v3.3.9
+[3.3.8]: https://github.com/adshares/aduser/compare/v3.3.7...v3.3.8
+[3.3.7]: https://github.com/adshares/aduser/compare/v3.3.6...v3.3.7
+[3.3.6]: https://github.com/adshares/aduser/compare/v3.3.5...v3.3.6
+[3.3.5]: https://github.com/adshares/aduser/compare/v3.3.3...v3.3.5
+[3.3.3]: https://github.com/adshares/aduser/compare/v3.3.2...v3.3.3
 [3.3.2]: https://github.com/adshares/aduser/compare/v3.3.1...v3.3.2
 [3.3.1]: https://github.com/adshares/aduser/compare/v3.3.0...v3.3.1
 [3.3.0]: https://github.com/adshares/aduser/compare/v3.2.3...v3.3.0

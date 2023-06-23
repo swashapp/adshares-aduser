@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Service\DclHeadersVerifierInterface;
 use App\Service\Fingerprint;
 use App\Service\ReCaptcha;
 use App\Service\Taxonomy;
@@ -40,28 +41,19 @@ use Symfony\Component\Routing\Annotation\Route;
 
 final class PixelController extends AbstractController
 {
-    private IdGenerator $idGenerator;
-    private ReCaptcha $reCaptcha;
-    private Fingerprint $fingerprint;
-    private Connection $connection;
-    private LoggerInterface $logger;
     private ?string $cookieName = '__au';
     private int $cookieExpiryPeriod = 31536000;
     private int $humanScoreExpiryPeriod = 3600;
     private int $fingerprintExpiryPeriod = 24 * 3600;
 
     public function __construct(
-        IdGenerator $idGenerator,
-        ReCaptcha $reCaptcha,
-        Fingerprint $fingerprint,
-        Connection $connection,
-        LoggerInterface $logger
+        private readonly IdGenerator $idGenerator,
+        private readonly ReCaptcha $reCaptcha,
+        private readonly Fingerprint $fingerprint,
+        private readonly Connection $connection,
+        private readonly DclHeadersVerifierInterface $dclHeadersVerifier,
+        private readonly LoggerInterface $logger
     ) {
-        $this->idGenerator = $idGenerator;
-        $this->reCaptcha = $reCaptcha;
-        $this->fingerprint = $fingerprint;
-        $this->connection = $connection;
-        $this->logger = $logger;
     }
 
     public function setCookieSettings(?string $cookieName, int $cookieExpiryPeriod): self
@@ -98,31 +90,30 @@ final class PixelController extends AbstractController
     )]
     public function register(string $adserver, string $tracking, Request $request): Response
     {
+        $response = new Response();
+        if ($request->headers->has('Origin')) {
+            $response->headers->set('Access-Control-Allow-Origin', $request->headers->get('Origin'));
+            $response->headers->set('Access-Control-Allow-Headers', '*');
+            $response->headers->set('Access-Control-Allow-Credentials', 'true');
+            $response->headers->set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        }
+        if ('OPTIONS' === $request->getRealMethod()) {
+            $response->setStatusCode(Response::HTTP_NO_CONTENT);
+            $response->headers->set('Access-Control-Max-Age', '1728000');
+            return $response;
+        }
+
         $cookieTrackingId = $this->getTrackingCookie($request);
         $adserverUserId = $this->loadAdserverUserId($adserver, $tracking);
-        if (($user = $this->loadUser($cookieTrackingId, $adserverUserId)) === null) {
-            $user = $this->createUser($request);
+        $externalUserId = $this->getExternalUserId($request);
+        if (null === ($user = $this->loadUser($cookieTrackingId, $adserverUserId, $externalUserId))) {
+            $user = $this->createUser($request, $externalUserId);
         }
 
         if ($user['id'] !== null) {
             $this->updateAdserverUserId($user['id'], $adserver, $tracking);
         }
-        $response = $this->getRegisterResponse($user);
-
-        if ($request->headers->has('Origin')) {
-            if ('OPTIONS' === $request->getRealMethod()) {
-                $response = new Response();
-            }
-            $response->headers->set('Access-Control-Allow-Origin', $request->headers->get('Origin'));
-            $response->headers->set('Access-Control-Allow-Headers', '*');
-            $response->headers->set('Access-Control-Allow-Credentials', 'true');
-            $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-            if ('OPTIONS' === $request->getRealMethod()) {
-                $response->setStatusCode(Response::HTTP_NO_CONTENT);
-                $response->headers->set('Access-Control-Max-Age', '1728000');
-                return $response;
-            }
-        }
+        $response->setContent($this->getRegisterResponseContent($user));
 
         return $this->prepareResponse($user['tracking_id'], $response);
     }
@@ -185,7 +176,7 @@ final class PixelController extends AbstractController
     private function updateAdserverUserId(int $userId, string $adserverId, string $trackingId): void
     {
         try {
-            $this->connection->executeUpdate(
+            $this->connection->executeStatement(
                 'INSERT INTO adserver_register(adserver_id, tracking_id, user_id)
                     VALUES (?, ?, ?)
                     ON DUPLICATE KEY UPDATE user_id = ?',
@@ -201,7 +192,7 @@ final class PixelController extends AbstractController
         }
     }
 
-    private function loadUser(?string $trackingId, ?int $userId): ?array
+    private function loadUser(?string $trackingId, ?int $userId, ?string $externalUserId): ?array
     {
         if ($trackingId !== null && !$this->idGenerator->validTrackingId($trackingId)) {
             $trackingId = null;
@@ -217,10 +208,17 @@ final class PixelController extends AbstractController
                     human_score_time,
                     fingerprint,
                     fingerprint_time,
-                    mapped_user_id
+                    mapped_user_id,
+                    external_user_id
                 FROM users';
             if ($trackingId !== null) {
                 $user = $this->connection->fetchAssociative($query . ' WHERE tracking_id = ? LIMIT 1', [$trackingId]);
+            }
+            if (false === $user && null !== $externalUserId) {
+                $user = $this->connection->fetchAssociative(
+                    $query . ' WHERE external_user_id = ? LIMIT 1',
+                    [$externalUserId]
+                );
             }
             if ($user === false && $userId !== null) {
                 $user = $this->connection->fetchAssociative($query . ' WHERE id = ? LIMIT 1', [$userId]);
@@ -241,6 +239,14 @@ final class PixelController extends AbstractController
         }
 
         if ($user !== false) {
+            if (null === $user['external_user_id'] && null !== $externalUserId) {
+                try {
+                    $this->connection->update('users', ['external_user_id' => $externalUserId], ['id' => $user['id']]);
+                } catch (DBALException $exception) {
+                    $this->logger->error(sprintf('Updating external_user_id failed: %s', $exception->getMessage()));
+                }
+            }
+
             $user['id'] = (int)$user['id'];
             $user['human_score'] = $user['human_score'] !== null ? (float)$user['human_score'] : null;
             $user['human_score_time'] =
@@ -255,7 +261,7 @@ final class PixelController extends AbstractController
         return null;
     }
 
-    private function createUser(Request $request): array
+    private function createUser(Request $request, ?string $externalUserId): array
     {
         $trackingId = $this->idGenerator->generateTrackingId($request);
         $country = $this->getCountry($request);
@@ -268,11 +274,13 @@ final class PixelController extends AbstractController
                     'tracking_id' => $trackingId,
                     'country' => $country,
                     'languages' => $languages,
+                    'external_user_id' => $externalUserId,
                 ],
                 [
                     'tracking_id' => Types::BINARY,
                     'country' => Types::STRING,
                     'languages' => Types::JSON,
+                    'external_user_id' => Types::STRING,
                 ]
             );
             $userId = (int)$this->connection->lastInsertId();
@@ -351,7 +359,7 @@ final class PixelController extends AbstractController
         }
     }
 
-    private function getRegisterResponse(array $user): Response
+    private function getRegisterResponseContent(array $user): string
     {
         $trackingId = $user['tracking_id'];
 
@@ -366,13 +374,13 @@ final class PixelController extends AbstractController
         }
 
         if (
-            $user['fingerprint'] === null
+            empty($user['fingerprint'])
             || $user['fingerprint_time'] < time() - $this->fingerprintExpiryPeriod
         ) {
             $pages[] = $this->fingerprint->getPageUrl($trackingId);
         }
 
-        return new Response($this->getHtmlPixel($images, array_filter($pages)));
+        return $this->getHtmlPixel($images, array_filter($pages));
     }
 
     private function getHtmlPixel(array $images, array $pages, array $sync = []): string
@@ -427,5 +435,13 @@ final class PixelController extends AbstractController
     {
         $value = !empty($this->cookieName) ? $request->cookies->get($this->cookieName) : null;
         return $value !== null ? base64_decode($value) : null;
+    }
+
+    private function getExternalUserId(Request $request): ?string
+    {
+        if ($this->dclHeadersVerifier->verify($request->headers)) {
+            return $this->dclHeadersVerifier->getUserId($request->headers);
+        }
+        return null;
     }
 }
