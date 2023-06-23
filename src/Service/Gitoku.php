@@ -43,7 +43,6 @@ final class Gitoku implements PageInfoProviderInterface
     private CacheInterface $cache;
     private LoggerInterface $logger;
     private int $apiVersion = 1;
-    private LoggerInterface $logger;
 
     public function __construct(
         HttpClientInterface $client,
